@@ -16,7 +16,13 @@ router = APIRouter(
 async def compare_weekly_files(
     previous_file: UploadFile = File(...),
     current_file: UploadFile = File(...),
-    key_columns: str = Form(...),
+    key_columns: str = Form(
+        "SIREN, Unique Identifier",
+        description=(
+            "Comma-separated business key columns. "
+            "Counterparty reports default to SIREN and Unique Identifier."
+        ),
+    ),
     movement_threshold_pct: float = Form(20.0),
     minimum_absolute_change: float = Form(0.0),
     generate_ai_insights: bool = Form(True),

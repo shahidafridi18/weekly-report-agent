@@ -1,6 +1,7 @@
 import shutil
 import tempfile
 from pathlib import Path
+from typing import Literal
 
 from fastapi import (
     APIRouter,
@@ -21,6 +22,9 @@ from app.reporting.chart_generator import (
     generate_movement_bridge_chart,
 )
 from app.reporting.pdf_generator import generate_weekly_report_pdf
+from app.reporting.excel_report_generator import (
+    generate_weekly_report_excel,
+)
 
 
 # ---------------------------------------------------------
@@ -67,7 +71,7 @@ def clean_filename(filename: str) -> str:
 def cleanup_directory(directory: Path) -> None:
     """
     Remove temporary files after FastAPI finishes
-    sending the PDF to the client.
+    sending the report to the client.
     """
 
     shutil.rmtree(
@@ -75,8 +79,6 @@ def cleanup_directory(directory: Path) -> None:
         ignore_errors=True,
     )
 
-
-# ---------------------------------------------------------
 # Generate report endpoint
 # ---------------------------------------------------------
 
@@ -88,17 +90,28 @@ async def generate_report(
 
     current_file: UploadFile = File(...),
 
-    key_columns: str = Form(...),
+    key_columns: str = Form(
+        "SIREN, Unique Identifier",
+        description=(
+            "Comma-separated business key columns. "
+            "Counterparty reports default to SIREN and Unique Identifier."
+        ),
+    ),
 
     movement_threshold_pct: float = Form(20.0),
 
     minimum_absolute_change: float = Form(0.0),
 
     generate_ai_insights: bool = Form(True),
+
+    report_format: Literal["pdf", "xlsx"] = Form(
+        "pdf",
+        description="Choose a concise PDF summary or a detailed Excel workbook.",
+    ),
 ):
     """
     Compare two weekly Excel files and generate
-    a downloadable PDF report.
+    a downloadable PDF or Excel report.
 
     Processing flow:
 
@@ -110,7 +123,7 @@ async def generate_report(
             ↓
         Optional AI insights
             ↓
-        Chart generation
+        Optional chart generation
             ↓
         PDF generation
             ↓
@@ -207,8 +220,8 @@ async def generate_report(
         #
         # AI is NOT required for the report to work.
         #
-        # If Gemini is unavailable, we still generate
-        # the PDF using the deterministic Python analysis.
+        # If Gemini is unavailable, the report still uses
+        # the deterministic Python analysis.
 
         ai_insights = None
 
@@ -251,6 +264,37 @@ async def generate_report(
                 prefix="weekly_report_"
             )
         )
+
+        previous_name = clean_filename(previous_file.filename)
+        current_name = clean_filename(current_file.filename)
+
+        if report_format == "xlsx":
+            excel_path = temp_directory / "weekly_comparison_report.xlsx"
+            generate_weekly_report_excel(
+                analysis=analysis,
+                output_path=excel_path,
+                previous_file_name=previous_file.filename,
+                current_file_name=current_file.filename,
+                ai_insights=ai_insights,
+            )
+
+            if not excel_path.exists() or excel_path.stat().st_size == 0:
+                raise RuntimeError("Excel report was not generated.")
+
+            background_tasks.add_task(
+                cleanup_directory,
+                temp_directory,
+            )
+            return FileResponse(
+                path=str(excel_path),
+                media_type=(
+                    "application/vnd.openxmlformats-officedocument."
+                    "spreadsheetml.sheet"
+                ),
+                filename=(
+                    f"{previous_name}_vs_{current_name}_report.xlsx"
+                ),
+            )
 
         # =========================================================
         # 7. Define temporary file paths
@@ -319,14 +363,6 @@ async def generate_report(
         # =========================================================
         # 11. Generate download filename
         # =========================================================
-
-        previous_name = clean_filename(
-            previous_file.filename
-        )
-
-        current_name = clean_filename(
-            current_file.filename
-        )
 
         download_filename = (
             f"{previous_name}_vs_"
@@ -405,6 +441,6 @@ async def generate_report(
             status_code=500,
             detail=(
                 "Unexpected error while "
-                "generating the PDF report."
+                "generating the report."
             ),
         ) from exc

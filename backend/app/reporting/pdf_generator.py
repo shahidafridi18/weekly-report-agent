@@ -450,7 +450,10 @@ def generate_weekly_report_pdf(
 
         metric_data.append(
             [
-                metric,
+                Paragraph(
+                    str(metric),
+                    small_style,
+                ),
                 format_number(
                     values.get(
                         "previous_total"
@@ -562,12 +565,19 @@ def generate_weekly_report_pdf(
     )
 
     if chart_path.exists():
+        story.append(PageBreak())
+        story.append(
+            Paragraph(
+                "KPI Change Chart",
+                section_style,
+            )
+        )
 
         story.append(
             Image(
                 str(chart_path),
                 width=6.6 * inch,
-                height=3.3 * inch,
+                height=5.3 * inch,
             )
         )
 
@@ -617,7 +627,10 @@ def generate_weekly_report_pdf(
 
         bridge_data.append(
             [
-                metric,
+                Paragraph(
+                    str(metric),
+                    small_style,
+                ),
                 format_number(
                     values.get(
                         "matched_entity_change"
@@ -649,6 +662,7 @@ def generate_weekly_report_pdf(
     bridge_table = Table(
         bridge_data,
         repeatRows=1,
+        colWidths=[180, 67, 62, 70, 68, 68],
     )
 
     bridge_table.setStyle(
@@ -1036,161 +1050,6 @@ def generate_weekly_report_pdf(
                     "were not requested or were "
                     "temporarily unavailable."
                 ),
-                body_style,
-            )
-        )
-
-    # =====================================================
-    # 7. Detailed Variance Appendix
-    # =====================================================
-
-    story.append(
-        PageBreak()
-    )
-
-    story.append(
-        Paragraph(
-            "Detailed Variance Appendix",
-            section_style,
-        )
-    )
-
-    story.append(
-        Paragraph(
-            (
-                "Detailed matched-entity values and "
-                "calculated week-over-week variances."
-            ),
-            body_style,
-        )
-    )
-
-    variance_data = analysis.get(
-        "variance_data",
-        [],
-    )
-
-    if variance_data:
-
-        columns = list(
-            variance_data[0].keys()
-        )
-
-        # Avoid showing the internal pandas merge column.
-        columns = [
-            column
-            for column in columns
-            if column != "_merge"
-        ]
-
-        appendix_data = [
-            [
-                Paragraph(
-                    str(column),
-                    small_style,
-                )
-                for column in columns
-            ]
-        ]
-
-        for row in variance_data:
-
-            appendix_data.append(
-                [
-                    Paragraph(
-                        format_number(
-                            row.get(column)
-                        )
-                        if isinstance(
-                            row.get(column),
-                            (int, float),
-                        )
-                        else str(
-                            row.get(
-                                column,
-                                "",
-                            )
-                        ),
-                        small_style,
-                    )
-                    for column in columns
-                ]
-            )
-
-        available_width = (
-            A4[0] - 80
-        )
-
-        column_width = (
-            available_width
-            / len(columns)
-        )
-
-        appendix_table = Table(
-            appendix_data,
-            repeatRows=1,
-            colWidths=[
-                column_width
-            ] * len(columns),
-        )
-
-        appendix_table.setStyle(
-            TableStyle(
-                [
-                    (
-                        "BACKGROUND",
-                        (0, 0),
-                        (-1, 0),
-                        colors.HexColor(
-                            "#E9ECEF"
-                        ),
-                    ),
-                    (
-                        "FONTNAME",
-                        (0, 0),
-                        (-1, 0),
-                        "Helvetica-Bold",
-                    ),
-                    (
-                        "GRID",
-                        (0, 0),
-                        (-1, -1),
-                        0.25,
-                        colors.HexColor(
-                            "#CCCCCC"
-                        ),
-                    ),
-                    (
-                        "VALIGN",
-                        (0, 0),
-                        (-1, -1),
-                        "TOP",
-                    ),
-                    (
-                        "TOPPADDING",
-                        (0, 0),
-                        (-1, -1),
-                        3,
-                    ),
-                    (
-                        "BOTTOMPADDING",
-                        (0, 0),
-                        (-1, -1),
-                        3,
-                    ),
-                ]
-            )
-        )
-
-        story.append(
-            appendix_table
-        )
-
-    else:
-
-        story.append(
-            Paragraph(
-                "No matched variance data available.",
                 body_style,
             )
         )

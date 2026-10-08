@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
@@ -12,6 +12,8 @@ HEADER_FONT = Font(bold=True, color="FFFFFF")
 HEADER_BORDER = Border(
     bottom=Side(style="thin", color="1F2937")
 )
+INSIGHT_HEADER_FILL = PatternFill("solid", fgColor="1E40AF")
+INSIGHT_CONTENT_FILL = PatternFill("solid", fgColor="EFF6FF")
 
 
 def _safe_cell_value(value):
@@ -75,6 +77,74 @@ def _write_table(
                 )
 
 
+def _write_ai_insights(
+    workbook: Workbook,
+    ai_insights: str,
+) -> None:
+    """
+    Create a dedicated sheet for AI insights
+    with improved formatting and styling.
+    """
+    worksheet = workbook.create_sheet("AI Insights")
+    worksheet.sheet_view.showGridLines = False
+    
+    # Add title
+    worksheet.merge_cells("A1:B1")
+    title_cell = worksheet["A1"]
+    title_cell.value = "AI-Generated Business Insights"
+    title_cell.font = Font(bold=True, color="FFFFFF", size=12)
+    title_cell.fill = INSIGHT_HEADER_FILL
+    title_cell.alignment = Alignment(
+        vertical="center",
+        horizontal="center",
+        wrap_text=True
+    )
+    worksheet.row_dimensions[1].height = 28
+    
+    worksheet.append([])  # Empty row for spacing
+    
+    # Split insights by paragraphs and write them
+    paragraphs = [
+        para.strip() 
+        for para in ai_insights.split("\n\n") 
+        if para.strip()
+    ]
+    
+    if not paragraphs:
+        # Fallback: split by single newlines
+        paragraphs = [
+            line.strip() 
+            for line in ai_insights.split("\n") 
+            if line.strip()
+        ]
+    
+    # Write each paragraph/insight
+    for paragraph in paragraphs:
+        row_num = worksheet.max_row + 1
+        worksheet.merge_cells(f"A{row_num}:B{row_num}")
+        
+        cell = worksheet[f"A{row_num}"]
+        cell.value = paragraph
+        cell.font = Font(size=11, color="1F2937")
+        cell.fill = INSIGHT_CONTENT_FILL
+        cell.alignment = Alignment(
+            vertical="top",
+            horizontal="left",
+            wrap_text=True
+        )
+        
+        # Calculate appropriate row height based on text length
+        lines = len(paragraph) // 80 + 1
+        worksheet.row_dimensions[row_num].height = max(30, 20 * lines)
+        
+        # Add spacing row
+        worksheet.append([])
+    
+    # Set column widths
+    worksheet.column_dimensions["A"].width = 120
+    worksheet.column_dimensions["B"].width = 2
+
+
 def generate_weekly_report_excel(
     analysis: dict,
     output_path: str | Path,
@@ -85,6 +155,20 @@ def generate_weekly_report_excel(
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
+    # Load existing workbook if it exists, otherwise create new one
+    if output_path.exists():
+        workbook = load_workbook(output_path)
+        # Remove AI Insights sheet if it exists (will be recreated with new data)
+        if "AI Insights" in workbook.sheetnames:
+            workbook.remove(workbook["AI Insights"])
+        # Skip recreating analysis sheets if they already exist
+        # Just update AI Insights and save
+        if ai_insights:
+            _write_ai_insights(workbook, ai_insights)
+        workbook.save(output_path)
+        return output_path
+    
+    # Create new workbook if file doesn't exist
     workbook = Workbook()
     workbook.remove(workbook.active)
 
@@ -121,6 +205,13 @@ def generate_weekly_report_excel(
         cell.font = HEADER_FONT
     for column, width in {"A": 28, "B": 42, "C": 16, "D": 16, "E": 16, "F": 16}.items():
         summary.column_dimensions[column].width = width
+
+    # Add AI Insights sheet right after Summary for visibility
+    if ai_insights:
+        _write_ai_insights(
+            workbook,
+            ai_insights,
+        )
 
     metric_summary = analysis.get("metric_summary", {})
     _write_table(
@@ -260,15 +351,6 @@ def generate_weekly_report_excel(
         transition_rows,
         widths=[22] * len(key_columns) + [38, 16, 16, 20],
     )
-
-    if ai_insights:
-        _write_table(
-            workbook,
-            "AI Insights",
-            ["Insight"],
-            [[line] for line in ai_insights.splitlines() if line.strip()],
-            widths=[110],
-        )
 
     workbook.save(output_path)
     return output_path

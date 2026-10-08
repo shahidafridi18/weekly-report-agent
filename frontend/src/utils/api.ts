@@ -9,9 +9,6 @@ class ApiClient {
     this.client = axios.create({
       baseURL: API_BASE_URL,
       timeout: API_TIMEOUT,
-      headers: {
-        'Content-Type': 'application/json',
-      },
     });
 
     // Response interceptor for error handling
@@ -60,3 +57,12 @@ class ApiClient {
 }
 
 export const apiClient = new ApiClient();
+
+export const getApiErrorMessage = (error: unknown, fallback: string): string => {
+  if (!axios.isAxiosError(error)) return fallback;
+  const detail = error.response?.data?.detail;
+  if (typeof detail === 'string') return detail;
+  if (typeof detail?.message === 'string') return detail.message;
+  if (Array.isArray(detail)) return detail.map(item => item.msg || JSON.stringify(item)).join('; ');
+  return error.message || fallback;
+};

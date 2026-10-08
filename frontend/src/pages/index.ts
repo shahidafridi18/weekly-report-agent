@@ -1,5 +1,3 @@
-import React from 'react';
-import toast from 'react-hot-toast';
 
 // Use this file to re-export all pages for convenience
 export { Dashboard } from './Dashboard';

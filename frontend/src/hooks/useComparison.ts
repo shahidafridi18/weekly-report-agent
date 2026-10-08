@@ -2,6 +2,7 @@ import { useAppDispatch, useAppSelector } from './useRedux';
 import { setRequest, setResults, setLoading, setError } from '../store/slices/comparisonSlice';
 import { comparisonService } from '../services';
 import { CompareRequest } from '../types';
+import { getApiErrorMessage } from '../utils/api';
 
 export const useComparison = () => {
   const dispatch = useAppDispatch();
@@ -16,11 +17,11 @@ export const useComparison = () => {
       dispatch(setRequest(compareRequest));
       const response = await comparisonService.compareFiles(compareRequest);
       dispatch(setResults({
-        results: response,
-        insights: response.ai_insights,
+        results: response.analysis,
+        insights: response.ai.insights || undefined,
       }));
     } catch (err: any) {
-      const errorMessage = err.response?.data?.detail || 'Failed to run comparison';
+      const errorMessage = getApiErrorMessage(err, 'Failed to run comparison');
       dispatch(setError(errorMessage));
       throw err;
     }

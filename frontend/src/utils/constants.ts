@@ -1,7 +1,7 @@
 // Constants used throughout the application
 
-export const API_TIMEOUT = parseInt(process.env.VITE_API_TIMEOUT || '30000');
-export const API_BASE_URL = process.env.VITE_API_BASE_URL || 'http://localhost:8000';
+export const API_TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT || '30000', 10);
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 export const DEFAULT_KEY_COLUMNS = ['SIREN', 'Unique Identifier'];
 

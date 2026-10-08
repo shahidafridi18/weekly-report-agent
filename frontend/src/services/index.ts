@@ -8,7 +8,8 @@ import {
   Report,
   FileInfo,
   CompareRequest,
-  ReportRequest,
+  GenerateReportRequest,
+  ReportResponse,
 } from '../types';
 
 class ComparisonService {
@@ -30,8 +31,8 @@ class ComparisonService {
 }
 
 class ReportService {
-  async generateReport(request: ReportRequest): Promise<Report> {
-    const response = await apiClient.post<Report>(
+  async generateReport(request: GenerateReportRequest): Promise<ReportResponse> {
+    const response = await apiClient.post<ReportResponse>(
       '/api/agent/reports',
       request
     );
@@ -53,10 +54,10 @@ class ReportService {
 }
 
 class ChatService {
-  async sendMessage(message: string): Promise<ChatResponse> {
+  async sendMessage(message: string, session_id?: string): Promise<ChatResponse> {
     const response = await apiClient.post<ChatResponse>(
       '/api/agent/chat',
-      { message }
+      { message, session_id }
     );
     return response.data;
   }
@@ -64,10 +65,10 @@ class ChatService {
 
 class FileService {
   async listFiles(): Promise<FileInfo[]> {
-    const response = await apiClient.get<FileInfo[]>(
+    const response = await apiClient.get<{ files: FileInfo[]; count: number }>(
       '/api/agent/files'
     );
-    return response.data;
+    return response.data.files;
   }
 }
 

@@ -82,18 +82,16 @@ export interface ComparisonAnalysis {
   zero_transitions: ZeroTransition[];
 }
 
-export interface ComparisonResponse extends ComparisonAnalysis {
-  ai_insights?: string;
+export interface ComparisonResponse {
+  analysis: ComparisonAnalysis;
+  ai: { status: string; insights: string | null };
 }
 
 export interface Report {
-  id: string;
-  format: 'pdf' | 'xlsx' | 'both';
-  name: string;
-  created_at: string;
-  file_size?: number;
-  previous_file: string;
-  current_file: string;
+  report_id: string;
+  format: 'pdf' | 'xlsx';
+  filename: string;
+  download_url: string;
 }
 
 export interface ChatMessage {
@@ -104,8 +102,11 @@ export interface ChatMessage {
 }
 
 export interface ChatResponse {
-  message: string;
-  context?: string;
+  answer: string;
+  session_id: string;
+  status: string;
+  action?: string;
+  data?: unknown;
 }
 
 export interface CompareRequest {
@@ -119,15 +120,17 @@ export interface CompareRequest {
 }
 
 export interface ReportRequest {
-  compare_request: CompareRequest;
   report_format: 'pdf' | 'xlsx' | 'both';
 }
+export type GenerateReportRequest = CompareRequest & ReportRequest;
+export interface ReportResponse extends ComparisonResponse { reports: Report[] }
 
 export interface FileInfo {
-  name: string;
-  path: string;
-  size: number;
-  modified: string;
+  file_id: string;
+  filename: string;
+  size_bytes: number;
+  modified_at: string;
+  week_hint: number | null;
 }
 
 export interface ApiError {

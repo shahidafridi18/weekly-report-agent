@@ -1,16 +1,16 @@
 import { useAppDispatch, useAppSelector } from './useRedux';
-import { setMessages, addMessage, setLoading, setError } from '../store/slices/chatSlice';
+import { addMessage, setLoading, setError, setSessionId, clearChat } from '../store/slices/chatSlice';
 import { chatService } from '../services';
 import { ChatMessage } from '../types';
-import { v4 as uuidv4 } from 'crypto';
+import { getApiErrorMessage } from '../utils/api';
 
 export const useChat = () => {
   const dispatch = useAppDispatch();
-  const { messages, loading, error } = useAppSelector(state => state.chat);
+  const { messages, loading, error, sessionId } = useAppSelector(state => state.chat);
 
   const sendMessage = async (content: string) => {
     const userMessage: ChatMessage = {
-      id: uuidv4(),
+      id: crypto.randomUUID(),
       role: 'user',
       content,
       timestamp: new Date(),
@@ -21,24 +21,25 @@ export const useChat = () => {
     dispatch(setError(null));
 
     try {
-      const response = await chatService.sendMessage(content);
+      const response = await chatService.sendMessage(content, sessionId || undefined);
+      dispatch(setSessionId(response.session_id));
       const assistantMessage: ChatMessage = {
-        id: uuidv4(),
+        id: crypto.randomUUID(),
         role: 'assistant',
-        content: response.message,
+        content: response.answer,
         timestamp: new Date(),
       };
       dispatch(addMessage(assistantMessage));
       dispatch(setLoading(false));
     } catch (err: any) {
-      const errorMessage = err.response?.data?.detail || 'Chat service failed';
+      const errorMessage = getApiErrorMessage(err, 'Chat service failed');
       dispatch(setError(errorMessage));
       dispatch(setLoading(false));
     }
   };
 
   const clearMessages = () => {
-    dispatch(setMessages([]));
+    dispatch(clearChat());
   };
 
   return {

@@ -1,7 +1,7 @@
 import React from 'react';
 import { AlertCircle, CheckCircle, Info, AlertTriangle } from 'lucide-react';
-import toast, { Toast } from 'react-hot-toast';
-import { Notification } from '../store/slices/uiSlice';
+import toast from 'react-hot-toast';
+import { Notification } from '../../store/slices/uiSlice';
 
 const notificationTypeConfig = {
   success: {
@@ -52,7 +52,7 @@ export const showToast = (message: string, type: 'success' | 'error' | 'info' | 
   const config = notificationTypeConfig[type];
   const Icon = config.icon;
 
-  toast.custom((t: Toast) => (
+  toast.custom(() => (
     <div
       className={`${config.bgColor} ${config.textColor} border ${config.borderColor} rounded-lg p-4 flex items-center gap-3 shadow-lg`}
     >

@@ -1,10 +1,12 @@
 import React from 'react';
-import { useAppSelector } from '../hooks';
+import { useAppDispatch, useAppSelector } from '../hooks';
+import { clearComparison } from '../store/slices/comparisonSlice';
 import { ComparisonForm, ComparisonResults, MetricsTable } from '../components/Comparison';
 import { ReportGenerator } from '../components/Reports';
 import { Loading } from '../components/common';
 
 export const ComparisonPage: React.FC = () => {
+  const dispatch = useAppDispatch();
   const { results, aiInsights, loading, error } = useAppSelector(state => state.comparison);
 
   return (
@@ -56,7 +58,7 @@ export const ComparisonPage: React.FC = () => {
             <button
               onClick={() => {
                 // Clear comparison
-                window.location.reload();
+                dispatch(clearComparison());
               }}
               className="px-6 py-3 bg-pale-blue text-blue rounded-lg hover:bg-light-blue transition-colors font-medium"
             >

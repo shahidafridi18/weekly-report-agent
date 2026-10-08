@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { fileService } from '../services';
 import { FileInfo } from '../types';
+import { getApiErrorMessage } from '../utils/api';
 
 export const useFiles = () => {
   const [files, setFiles] = useState<FileInfo[]>([]);
@@ -14,7 +15,7 @@ export const useFiles = () => {
       const data = await fileService.listFiles();
       setFiles(data);
     } catch (err: any) {
-      const errorMessage = err.response?.data?.detail || 'Failed to fetch files';
+      const errorMessage = getApiErrorMessage(err, 'Failed to fetch files');
       setError(errorMessage);
     } finally {
       setLoading(false);

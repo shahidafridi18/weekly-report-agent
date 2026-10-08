@@ -1,6 +1,5 @@
 import React from 'react';
 import { BarChart3, FileText, MessageSquare, TrendingUp } from 'lucide-react';
-import { Button } from '../common';
 import { useNavigate } from 'react-router-dom';
 
 export const Dashboard: React.FC = () => {

@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useComparison, useFiles } from '../../hooks';
 import { Button, Loading } from '../common';
-import { CompareRequest, DEFAULT_KEY_COLUMNS } from '../../types';
-import { MOVEMENT_THRESHOLD_DEFAULT, MINIMUM_ABSOLUTE_CHANGE_DEFAULT } from '../../utils/constants';
+import { CompareRequest } from '../../types';
+import { DEFAULT_KEY_COLUMNS, MOVEMENT_THRESHOLD_DEFAULT, MINIMUM_ABSOLUTE_CHANGE_DEFAULT } from '../../utils/constants';
 import toast from 'react-hot-toast';
 
 export const ComparisonForm: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
   const { runComparison, loading } = useComparison();
-  const { files, fetchFiles } = useFiles();
+  const { files, fetchFiles, error: filesError, loading: filesLoading } = useFiles();
   const [formData, setFormData] = useState<CompareRequest>({
     previous_file: '',
     current_file: '',
@@ -36,7 +36,7 @@ export const ComparisonForm: React.FC<{ onSuccess?: () => void }> = ({ onSuccess
 
     try {
       await runComparison(formData);
-      toast.success('Comparison started successfully!');
+      toast.success('Comparison completed successfully!');
       onSuccess?.();
     } catch (error) {
       toast.error('Failed to run comparison');
@@ -50,6 +50,9 @@ export const ComparisonForm: React.FC<{ onSuccess?: () => void }> = ({ onSuccess
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6 space-y-6">
       <h2 className="text-2xl font-bold text-navy">Run Comparison</h2>
+      {filesError && <p className="text-danger" role="alert">Could not load files: {typeof filesError === 'string' ? filesError : JSON.stringify(filesError)}</p>}
+      {filesLoading && <p className="text-dark-grey">Loading available Excel files...</p>}
+      {!filesLoading && !filesError && files.length === 0 && <p className="text-dark-grey">No Excel files found. Copy your .xlsx files into backend/data/weekly and refresh this page.</p>}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Previous File */}
@@ -64,8 +67,8 @@ export const ComparisonForm: React.FC<{ onSuccess?: () => void }> = ({ onSuccess
           >
             <option value="">Select a file...</option>
             {files.map(file => (
-              <option key={file.name} value={file.name}>
-                {file.name}
+              <option key={file.file_id} value={file.file_id}>
+                {file.filename}
               </option>
             ))}
           </select>
@@ -83,8 +86,8 @@ export const ComparisonForm: React.FC<{ onSuccess?: () => void }> = ({ onSuccess
           >
             <option value="">Select a file...</option>
             {files.map(file => (
-              <option key={file.name} value={file.name}>
-                {file.name}
+              <option key={file.file_id} value={file.file_id}>
+                {file.filename}
               </option>
             ))}
           </select>
@@ -101,7 +104,7 @@ export const ComparisonForm: React.FC<{ onSuccess?: () => void }> = ({ onSuccess
           value={formData.key_columns.join(', ')}
           onChange={(e) => setFormData({
             ...formData,
-            key_columns: e.target.value.split(',').map(col => col.trim())
+            key_columns: e.target.value.split(',').map(col => col.trim()).filter(Boolean)
           })}
           className="w-full px-4 py-2 border border-mid-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-blue"
           placeholder="e.g., SIREN, Unique Identifier"

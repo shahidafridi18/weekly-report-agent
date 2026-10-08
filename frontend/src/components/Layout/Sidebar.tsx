@@ -26,7 +26,7 @@ export const Sidebar: React.FC = () => {
       className={clsx(
         'bg-pale-blue border-r border-mid-grey transition-all duration-300',
         sidebarOpen ? 'w-64' : 'w-20',
-        'hidden lg:block min-h-screen'
+        'hidden lg:block h-full flex-shrink-0 overflow-y-auto'
       )}
     >
       <div className="p-4 space-y-8">

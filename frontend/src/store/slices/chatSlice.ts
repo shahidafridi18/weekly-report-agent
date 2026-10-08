@@ -36,6 +36,7 @@ const chatSlice = createSlice({
     },
     clearChat: (state) => {
       state.messages = [];
+      state.sessionId = null;
       state.error = null;
     },
   },

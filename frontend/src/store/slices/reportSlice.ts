@@ -41,8 +41,8 @@ const reportSlice = createSlice({
       state.downloadProgress = action.payload;
     },
     removeReport: (state, action: PayloadAction<string>) => {
-      state.reports = state.reports.filter(r => r.id !== action.payload);
-      if (state.currentReport?.id === action.payload) {
+      state.reports = state.reports.filter(r => r.report_id !== action.payload);
+      if (state.currentReport?.report_id === action.payload) {
         state.currentReport = null;
       }
     },

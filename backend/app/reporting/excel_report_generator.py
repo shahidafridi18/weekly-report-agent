@@ -7,13 +7,13 @@ from openpyxl.utils import get_column_letter
 
 NUMBER_FORMAT = '#,##0.00;[Red](#,##0.00);-'
 PERCENT_FORMAT = '+0.00%;-0.00%;-'
-HEADER_FILL = PatternFill("solid", fgColor="334155")
+HEADER_FILL = PatternFill("solid", fgColor="24364B")
 HEADER_FONT = Font(bold=True, color="FFFFFF")
 HEADER_BORDER = Border(
-    bottom=Side(style="thin", color="1F2937")
+    bottom=Side(style="thin", color="20252A")
 )
-INSIGHT_HEADER_FILL = PatternFill("solid", fgColor="1E40AF")
-INSIGHT_CONTENT_FILL = PatternFill("solid", fgColor="EFF6FF")
+INSIGHT_HEADER_FILL = PatternFill("solid", fgColor="24364B")
+INSIGHT_CONTENT_FILL = PatternFill("solid", fgColor="F3F7FA")
 
 
 def _safe_cell_value(value):
@@ -39,14 +39,50 @@ def _write_table(
     worksheet.freeze_panes = "A2"
     worksheet.auto_filter.ref = worksheet.dimensions
     worksheet.sheet_view.showGridLines = False
+    worksheet.sheet_properties.pageSetUpPr.fitToPage = True
+    worksheet.page_setup.fitToWidth = 1
+    worksheet.page_setup.fitToHeight = 0
+    worksheet.page_margins.left = 0.25
+    worksheet.page_margins.right = 0.25
+    worksheet.oddFooter.center.text = "C2 - CONFIDENTIAL | Page &P of &N"
 
+    # FCCR-inspired compact table styling
+    header_fill = PatternFill("solid", fgColor="24364B")
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    header_alignment = Alignment(vertical="center", horizontal="center", wrap_text=True)
+    header_border = Border(
+        bottom=Side(style="thin", color="24364B"),
+        top=Side(style="thin", color="24364B"),
+        left=Side(style="thin", color="24364B"),
+        right=Side(style="thin", color="24364B"),
+    )
+    
     for cell in worksheet[1]:
-        cell.fill = HEADER_FILL
-        cell.font = HEADER_FONT
-        cell.border = HEADER_BORDER
-        cell.alignment = Alignment(vertical="center", wrap_text=True)
-    worksheet.row_dimensions[1].height = 30
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.border = header_border
+        cell.alignment = header_alignment
+    worksheet.row_dimensions[1].height = 32
 
+    # Apply alternating row colors
+    light_fill = PatternFill("solid", fgColor="F3F7FA")
+    white_fill = PatternFill("solid", fgColor="FFFFFF")
+    cell_border = Border(
+        left=Side(style="thin", color="D4D8DC"),
+        right=Side(style="thin", color="D4D8DC"),
+        top=Side(style="thin", color="D4D8DC"),
+        bottom=Side(style="thin", color="D4D8DC"),
+    )
+    cell_alignment = Alignment(vertical="center", wrap_text=False)
+
+    for row_index, row in enumerate(worksheet.iter_rows(min_row=2), start=2):
+        fill = light_fill if (row_index - 2) % 2 == 0 else white_fill
+        for cell in row:
+            cell.fill = fill
+            cell.border = cell_border
+            cell.alignment = cell_alignment
+
+    # Set column widths
     for column_index in range(1, len(headers) + 1):
         if widths and column_index <= len(widths):
             width = widths[column_index - 1]
@@ -66,6 +102,7 @@ def _write_table(
             )
         worksheet.column_dimensions[get_column_letter(column_index)].width = width
 
+    # Format numbers and percentages
     percentage_columns = percentage_columns or set()
     for row in worksheet.iter_rows(min_row=2):
         for cell in row:
@@ -75,6 +112,7 @@ def _write_table(
                     if cell.column in percentage_columns
                     else NUMBER_FORMAT
                 )
+                cell.alignment = Alignment(horizontal="right", vertical="center")
 
 
 def _write_ai_insights(
@@ -87,62 +125,112 @@ def _write_ai_insights(
     """
     worksheet = workbook.create_sheet("AI Insights")
     worksheet.sheet_view.showGridLines = False
+    worksheet.sheet_properties.pageSetUpPr.fitToPage = True
+    worksheet.page_setup.fitToWidth = 1
+    worksheet.page_setup.fitToHeight = 0
+    worksheet.oddHeader.left.text = "C2 - CONFIDENTIAL"
+    worksheet.oddFooter.center.text = "C2 - CONFIDENTIAL | Page &P of &N"
     
     # Add title
-    worksheet.merge_cells("A1:B1")
+    worksheet.merge_cells("A1:C1")
     title_cell = worksheet["A1"]
     title_cell.value = "AI-Generated Business Insights"
-    title_cell.font = Font(bold=True, color="FFFFFF", size=12)
+    title_cell.font = Font(bold=True, color="FFFFFF", size=14)
     title_cell.fill = INSIGHT_HEADER_FILL
     title_cell.alignment = Alignment(
         vertical="center",
-        horizontal="center",
+        horizontal="left",
         wrap_text=True
     )
-    worksheet.row_dimensions[1].height = 28
+    worksheet.row_dimensions[1].height = 32
     
     worksheet.append([])  # Empty row for spacing
     
-    # Split insights by paragraphs and write them
-    paragraphs = [
-        para.strip() 
-        for para in ai_insights.split("\n\n") 
-        if para.strip()
-    ]
+    # Parse insights with better formatting
+    lines = ai_insights.split("\n")
+    current_section = None
+    section_fill = PatternFill("solid", fgColor="DCE8F2")
     
-    if not paragraphs:
-        # Fallback: split by single newlines
-        paragraphs = [
-            line.strip() 
-            for line in ai_insights.split("\n") 
-            if line.strip()
-        ]
-    
-    # Write each paragraph/insight
-    for paragraph in paragraphs:
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+            
         row_num = worksheet.max_row + 1
-        worksheet.merge_cells(f"A{row_num}:B{row_num}")
         
-        cell = worksheet[f"A{row_num}"]
-        cell.value = paragraph
-        cell.font = Font(size=11, color="1F2937")
-        cell.fill = INSIGHT_CONTENT_FILL
-        cell.alignment = Alignment(
-            vertical="top",
-            horizontal="left",
-            wrap_text=True
-        )
+        # Handle markdown-style headers
+        if line.startswith("## "):
+            # Section header
+            current_section = line[3:].strip()
+            worksheet.merge_cells(f"A{row_num}:C{row_num}")
+            cell = worksheet[f"A{row_num}"]
+            cell.value = current_section
+            cell.font = Font(bold=True, color="315F8C", size=12)
+            cell.fill = PatternFill("solid", fgColor="DCE8F2")
+            cell.alignment = Alignment(vertical="center", horizontal="left", wrap_text=True)
+            worksheet.row_dimensions[row_num].height = 24
+            
+        elif line.startswith("# "):
+            # Main header
+            main_header = line[2:].strip()
+            worksheet.merge_cells(f"A{row_num}:C{row_num}")
+            cell = worksheet[f"A{row_num}"]
+            cell.value = main_header
+            cell.font = Font(bold=True, color="24364B", size=13)
+            cell.fill = PatternFill("solid", fgColor="DCE8F2")
+            cell.alignment = Alignment(vertical="center", horizontal="left", wrap_text=True)
+            worksheet.row_dimensions[row_num].height = 26
+            
+        elif line.startswith("- "):
+            # Bullet point
+            bullet_text = line[2:].strip()
+            worksheet.merge_cells(f"B{row_num}:C{row_num}")
+            
+            bullet_cell = worksheet[f"A{row_num}"]
+            bullet_cell.value = "•"
+            bullet_cell.font = Font(size=11, color="24364B", bold=True)
+            bullet_cell.alignment = Alignment(horizontal="center")
+            
+            text_cell = worksheet[f"B{row_num}"]
+            text_cell.value = bullet_text
+            text_cell.font = Font(size=11, color="20252A")
+            text_cell.fill = section_fill
+            text_cell.alignment = Alignment(vertical="top", horizontal="left", wrap_text=True)
+            
+            lines_count = max(1, len(bullet_text) // 100 + 1)
+            worksheet.row_dimensions[row_num].height = max(22, 16 * lines_count)
+            
+        elif line.startswith("**") or "**" in line:
+            # Bold text
+            text = line.replace("**", "")
+            worksheet.merge_cells(f"A{row_num}:C{row_num}")
+            cell = worksheet[f"A{row_num}"]
+            cell.value = text
+            cell.font = Font(bold=True, size=11, color="20252A")
+            cell.fill = section_fill
+            cell.alignment = Alignment(vertical="top", horizontal="left", wrap_text=True)
+            lines_count = max(1, len(text) // 100 + 1)
+            worksheet.row_dimensions[row_num].height = max(20, 16 * lines_count)
+            
+        else:
+            # Regular text
+            worksheet.merge_cells(f"A{row_num}:C{row_num}")
+            cell = worksheet[f"A{row_num}"]
+            cell.value = line
+            cell.font = Font(size=11, color="495057")
+            cell.fill = section_fill
+            cell.alignment = Alignment(vertical="top", horizontal="left", wrap_text=True)
+            lines_count = max(1, len(line) // 100 + 1)
+            worksheet.row_dimensions[row_num].height = max(20, 16 * lines_count)
         
-        # Calculate appropriate row height based on text length
-        lines = len(paragraph) // 80 + 1
-        worksheet.row_dimensions[row_num].height = max(30, 20 * lines)
-        
-        # Add spacing row
-        worksheet.append([])
+        # Add spacing row after each major element
+        if line.startswith("## ") or line.startswith("# "):
+            worksheet.append([])
     
-    # Set column widths
-    worksheet.column_dimensions["A"].width = 120
-    worksheet.column_dimensions["B"].width = 2
+    # Set column widths for better readability
+    worksheet.column_dimensions["A"].width = 3
+    worksheet.column_dimensions["B"].width = 60
+    worksheet.column_dimensions["C"].width = 60
 
 
 def generate_weekly_report_excel(
@@ -179,18 +267,56 @@ def generate_weekly_report_excel(
 
     summary = workbook.create_sheet("Summary")
     summary.sheet_view.showGridLines = False
+    summary.sheet_properties.pageSetUpPr.fitToPage = True
+    summary.page_setup.fitToWidth = 1
+    summary.page_setup.fitToHeight = 1
+    summary.oddHeader.left.text = "C2 - CONFIDENTIAL"
+    summary.oddHeader.right.text = "WEEKLY AI COMPARISON REPORT"
+    summary.oddFooter.center.text = "C2 - CONFIDENTIAL | Page &P of &N"
     summary.merge_cells("A1:F1")
     summary["A1"] = "Weekly Business Comparison Report"
-    summary["A1"].font = Font(bold=True, color="FFFFFF", size=15)
-    summary["A1"].fill = HEADER_FILL
-    summary["A1"].alignment = Alignment(vertical="center")
-    summary.row_dimensions[1].height = 32
+    summary["A1"].font = Font(bold=True, color="FFFFFF", size=16)
+    summary["A1"].fill = PatternFill("solid", fgColor="24364B")
+    summary["A1"].alignment = Alignment(vertical="center", horizontal="left")
+    summary.row_dimensions[1].height = 30
     summary.append([])
+    
+    # Add summary information with better styling
+    info_fill = PatternFill("solid", fgColor="DCE8F2")
+    info_font = Font(bold=True, size=11, color="24364B")
+    value_font = Font(size=11, color="495057")
+    
+    # Previous file row
     summary.append(["Previous file", previous_file_name])
+    summary["A3"].font = info_font
+    summary["A3"].fill = info_fill
+    summary["B3"].font = value_font
+    
+    # Current file row
     summary.append(["Current file", current_file_name])
-    summary.append(["Matching keys", ", ".join(key_columns)])
+    summary["A4"].font = info_font
+    summary["A4"].fill = info_fill
+    summary["B4"].font = value_font
+    
+    # Matching keys row
+    summary.append(["Matching keys", ", ".join(key_columns), "KPI fields", ", ".join(metric_columns)])
+    summary["A5"].font = info_font
+    summary["A5"].fill = info_fill
+    summary["B5"].font = value_font
+    summary["C5"].font = info_font
+    summary["C5"].fill = info_fill
+    summary["D5"].font = value_font
+    
     summary.append([])
+    
+    # Summary statistics header row
     summary.append(["Previous rows", "Current rows", "Matched", "New", "Removed"])
+    for col in ["A", "B", "C", "D", "E"]:
+        summary[f"{col}7"].fill = PatternFill("solid", fgColor="24364B")
+        summary[f"{col}7"].font = Font(bold=True, color="FFFFFF", size=11)
+        summary[f"{col}7"].alignment = Alignment(horizontal="center", vertical="center")
+    
+    # Summary statistics data row
     summary.append(
         [
             row_summary.get("previous_rows", 0),
@@ -200,10 +326,13 @@ def generate_weekly_report_excel(
             row_summary.get("removed_rows", 0),
         ]
     )
-    for cell in summary[7]:
-        cell.fill = HEADER_FILL
-        cell.font = HEADER_FONT
-    for column, width in {"A": 28, "B": 42, "C": 16, "D": 16, "E": 16, "F": 16}.items():
+    for col in ["A", "B", "C", "D", "E"]:
+        summary[f"{col}8"].fill = PatternFill("solid", fgColor="F3F7FA")
+        summary[f"{col}8"].font = Font(size=11, color="495057", bold=True)
+        summary[f"{col}8"].alignment = Alignment(horizontal="center", vertical="center")
+    
+    # Set column widths
+    for column, width in {"A": 20, "B": 30, "C": 16, "D": 16, "E": 16, "F": 16}.items():
         summary.column_dimensions[column].width = width
 
     # Add AI Insights sheet right after Summary for visibility
@@ -212,6 +341,7 @@ def generate_weekly_report_excel(
             workbook,
             ai_insights,
         )
+        workbook._sheets.insert(1, workbook._sheets.pop())
 
     metric_summary = analysis.get("metric_summary", {})
     _write_table(

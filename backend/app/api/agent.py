@@ -5,11 +5,13 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 
-from app.agent.models import ChatRequest, CompareRequest, FileRequest, ReportRequest
+from app.agent.models import ChatRequest, CompareRequest, FileRequest, QueryRequest, ReportRequest
+from app.agent.metric_resolver import MetricMatchError, MetricResolver
 from app.agent.orchestrator import AgentUnavailableError, WeeklyAgent
 from app.agent.report_store import LocalReportStore
 from app.agent.settings import AgentSettings
-from app.agent.tools import WeeklyTools
+from app.agent.sessions import SessionConflictError, SessionNotFoundError, SessionStore
+from app.agent.tools import EntityMatchError, WeeklyTools
 from app.sources.base import AmbiguousFileError
 from app.sources.local import LocalFileSource
 
@@ -21,7 +23,10 @@ logger = logging.getLogger(__name__)
 @lru_cache(maxsize=1)
 def get_agent() -> WeeklyAgent:
     settings = AgentSettings.from_env()
-    return WeeklyAgent(WeeklyTools(LocalFileSource(settings.input_directory), LocalReportStore(settings)))
+    return WeeklyAgent(
+        WeeklyTools(LocalFileSource(settings.input_directory), LocalReportStore(settings), MetricResolver(settings.metric_aliases)),
+        sessions=SessionStore(settings.session_database),
+    )
 
 
 def invoke(operation):
@@ -29,6 +34,14 @@ def invoke(operation):
         return operation()
     except AmbiguousFileError as exc:
         raise HTTPException(409, detail={"message": str(exc), "candidates": exc.candidates}) from exc
+    except MetricMatchError as exc:
+        raise HTTPException(409 if exc.ambiguous else 400, detail={"message": str(exc), "candidates": exc.candidates}) from exc
+    except EntityMatchError as exc:
+        raise HTTPException(409, detail={"message": str(exc), "candidates": exc.candidates}) from exc
+    except SessionNotFoundError as exc:
+        raise HTTPException(404, detail=str(exc)) from exc
+    except SessionConflictError as exc:
+        raise HTTPException(409, detail=str(exc)) from exc
     except FileNotFoundError as exc:
         raise HTTPException(404, detail=str(exc)) from exc
     except AgentUnavailableError as exc:
@@ -63,7 +76,32 @@ def create_reports(request: ReportRequest, agent: WeeklyAgent = Depends(get_agen
 
 @router.post("/chat")
 def chat(request: ChatRequest, agent: WeeklyAgent = Depends(get_agent)):
-    return invoke(lambda: agent.chat(request.message))
+    return invoke(lambda: agent.chat(
+        message=request.message,
+        session_id=request.session_id,
+        include_details=request.include_details,
+    ))
+
+
+@router.post("/query")
+def query_comparison(request: QueryRequest, agent: WeeklyAgent = Depends(get_agent)):
+    return invoke(lambda: agent.tools.query_comparison(request))
+
+
+@router.post("/sessions")
+def create_session(agent: WeeklyAgent = Depends(get_agent)):
+    return invoke(agent.sessions.create)
+
+
+@router.get("/sessions/{session_id}")
+def get_session(session_id: str, agent: WeeklyAgent = Depends(get_agent)):
+    return invoke(lambda: agent.sessions.get(session_id))
+
+
+@router.delete("/sessions/{session_id}")
+def delete_session(session_id: str, agent: WeeklyAgent = Depends(get_agent)):
+    invoke(lambda: agent.sessions.delete(session_id))
+    return {"status": "deleted", "session_id": session_id}
 
 
 @router.get("/reports/{report_format}/{report_id}")

@@ -11,6 +11,8 @@ class StrictModel(BaseModel):
 
 class ChatRequest(StrictModel):
     message: str = Field(min_length=1, max_length=4000)
+    session_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{32}$")
+    include_details: bool = False
 
     @field_validator("message")
     @classmethod
@@ -23,6 +25,8 @@ class ChatRequest(StrictModel):
 class FileRequest(StrictModel):
     file: str = Field(min_length=1, max_length=512)
     key_columns: list[str] = Field(default_factory=lambda: list(COUNTERPARTY_KEY_COLUMNS), min_length=1)
+    metrics: list[str] | None = None
+    entity: str | None = Field(default=None, min_length=1, max_length=512)
 
     @field_validator("key_columns")
     @classmethod
@@ -47,6 +51,13 @@ class CompareRequest(StrictModel):
 
 class ReportRequest(CompareRequest):
     report_format: Literal["pdf", "xlsx", "both"] = "both"
+
+
+class QueryRequest(CompareRequest):
+    question: Literal["metric_summary", "contributors", "entity", "entities", "zero_transitions"] = "metric_summary"
+    entity: str | None = Field(default=None, min_length=1, max_length=512)
+    direction: Literal["all", "increase", "decrease"] = "all"
+    limit: int = Field(default=5, ge=1, le=20)
 
 
 class ClarificationRequest(StrictModel):

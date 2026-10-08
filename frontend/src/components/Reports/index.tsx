@@ -105,7 +105,7 @@ export const ReportHistory: React.FC = () => {
               </div>
               <div className="flex flex-shrink-0 items-center gap-2 sm:flex-col sm:items-stretch xl:flex-row">
                 <a
-                  href={`${API_BASE_URL}${report.download_url}`}
+                  href={`${API_BASE_URL}${report.download_url}?filename=${encodeURIComponent(report.filename)}`}
                   download={report.filename}
                   className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-navy focus:outline-none focus:ring-2 focus:ring-blue sm:flex-none"
                   aria-label={`Download ${report.filename}`}

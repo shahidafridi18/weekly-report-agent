@@ -5,6 +5,8 @@ import {
   ComparisonAnalysis,
   ComparisonResponse,
   ChatResponse,
+  ChatSessionSummary,
+  ChatSessionDetail,
   Report,
   FileInfo,
   CompareRequest,
@@ -59,6 +61,16 @@ class ChatService {
       '/api/agent/chat',
       { message, session_id }
     );
+    return response.data;
+  }
+
+  async listSessions(): Promise<ChatSessionSummary[]> {
+    const response = await apiClient.get<{ sessions: ChatSessionSummary[]; count: number }>('/api/agent/sessions');
+    return response.data.sessions;
+  }
+
+  async getSession(sessionId: string): Promise<ChatSessionDetail> {
+    const response = await apiClient.get<ChatSessionDetail>(`/api/agent/sessions/${sessionId}`);
     return response.data;
   }
 }

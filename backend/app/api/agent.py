@@ -93,9 +93,18 @@ def create_session(agent: WeeklyAgent = Depends(get_agent)):
     return invoke(agent.sessions.create)
 
 
+@router.get("/sessions")
+def list_sessions(agent: WeeklyAgent = Depends(get_agent)):
+    return invoke(agent.sessions.list_sessions)
+
+
 @router.get("/sessions/{session_id}")
 def get_session(session_id: str, agent: WeeklyAgent = Depends(get_agent)):
-    return invoke(lambda: agent.sessions.get(session_id))
+    def read_session():
+        session = agent.sessions.get(session_id)
+        session["turns"] = agent.sessions.get_turns(session_id)
+        return session
+    return invoke(read_session)
 
 
 @router.delete("/sessions/{session_id}")
@@ -105,7 +114,8 @@ def delete_session(session_id: str, agent: WeeklyAgent = Depends(get_agent)):
 
 
 @router.get("/reports/{report_format}/{report_id}")
-def download_report(report_format: Literal["pdf", "xlsx"], report_id: str, agent: WeeklyAgent = Depends(get_agent)):
+def download_report(report_format: Literal["pdf", "xlsx"], report_id: str, filename: str | None = None, agent: WeeklyAgent = Depends(get_agent)):
     path = invoke(lambda: agent.tools.report_store.get_path(report_format, report_id))
+    readable_name = invoke(lambda: agent.tools.report_store.get_filename(report_format, report_id, filename))
     media_type = "application/pdf" if report_format == "pdf" else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    return FileResponse(path, media_type=media_type, filename=report_id)
+    return FileResponse(path, media_type=media_type, filename=readable_name)

@@ -285,5 +285,5 @@ class WeeklyAgent:
         except ValidationError as exc:
             raise AgentUnavailableError("Gemini supplied invalid tool arguments. Try explicit filenames and labels.") from exc
         state["history"] = (state.get("history", []) + [{"message": message[:500], "action": name, "answer": answer[:1500]}])[-6:]
-        self.sessions.save(session, state)
+        self.sessions.save(session, state, turn={"message": message, "answer": answer, "status": status})
         return {"session_id": session["session_id"], "status": status, "action": name, "answer": answer, "data": data}

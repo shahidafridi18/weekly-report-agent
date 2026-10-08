@@ -109,6 +109,26 @@ export interface ChatResponse {
   data?: unknown;
 }
 
+export interface ChatSessionSummary {
+  session_id: string;
+  title: string;
+  preview: string;
+  updated_at: string;
+  turn_count: number;
+}
+
+export interface ChatTurn {
+  message: string;
+  answer: string;
+  status: string;
+  created_at: string;
+}
+
+export interface ChatSessionDetail {
+  session_id: string;
+  turns: ChatTurn[];
+}
+
 export interface CompareRequest {
   previous_file: string;
   current_file: string;

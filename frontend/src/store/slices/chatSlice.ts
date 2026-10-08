@@ -34,6 +34,11 @@ const chatSlice = createSlice({
     setSessionId: (state, action: PayloadAction<string>) => {
       state.sessionId = action.payload;
     },
+    openChat: (state, action: PayloadAction<{ sessionId: string; messages: ChatMessage[] }>) => {
+      state.sessionId = action.payload.sessionId;
+      state.messages = action.payload.messages;
+      state.error = null;
+    },
     clearChat: (state) => {
       state.messages = [];
       state.sessionId = null;
@@ -42,6 +47,6 @@ const chatSlice = createSlice({
   },
 });
 
-export const { addMessage, setMessages, setLoading, setError, setSessionId, clearChat } =
+export const { addMessage, setMessages, setLoading, setError, setSessionId, openChat, clearChat } =
   chatSlice.actions;
 export default chatSlice.reducer;

@@ -224,7 +224,23 @@ class Phase2Tests(TestCase):
         report = self.chat("generate_weekly_reports", {"report_format": "xlsx"}, "Generate an Excel report for those files", first["session_id"])
         self.assertEqual(len(report["data"]["reports"]), 1)
         self.assertNotIn("analysis", report["data"])
-        self.assertEqual(self.client.get(report["data"]["reports"][0]["download_url"]).status_code, 200)
+        artifact = report["data"]["reports"][0]
+        downloaded = self.client.get(artifact["download_url"])
+        self.assertEqual(downloaded.status_code, 200)
+        self.assertIn(artifact["filename"], downloaded.headers["content-disposition"])
+
+    def test_list_sessions_and_restore_transcript_through_api(self):
+        first = self.compare(["gross ce"])
+        self.chat("query_comparison", {"question": "contributors"}, "Who drove that change?", first["session_id"])
+        listing = self.client.get("/api/agent/sessions")
+        self.assertEqual(listing.status_code, 200)
+        stored = next(item for item in listing.json()["sessions"] if item["session_id"] == first["session_id"])
+        self.assertEqual(stored["turn_count"], 2)
+        self.assertEqual(stored["title"], "Test request")
+        details = self.client.get(f"/api/agent/sessions/{first['session_id']}")
+        self.assertEqual(details.status_code, 200)
+        self.assertEqual(len(details.json()["turns"]), 2)
+        self.assertEqual(details.json()["turns"][1]["message"], "Who drove that change?")
 
     def test_metric_changes_in_followup_and_all_metrics_reset(self):
         first = self.compare(["cva balance"])

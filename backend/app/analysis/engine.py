@@ -12,7 +12,7 @@ from app.analysis.variance import calculate_variances
 from app.processing.matcher import categorize_rows, match_rows
 from app.processing.normalizer import classify_columns
 from app.validation.data_validator import validate_columns
-from app.processing.serializer import dataframe_to_records
+from app.processing.serializer import dataframe_to_records, make_json_safe
 from app.analysis.entities import (
     format_new_entities,
     format_removed_entities,
@@ -150,7 +150,7 @@ def run_analysis(
 
 
 
-    return {
+    return make_json_safe({
         "validation": validation,
 
         "columns": {
@@ -190,4 +190,4 @@ def run_analysis(
 
 "removed_entities": removed_entities,
 
-}
+})

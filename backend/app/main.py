@@ -2,7 +2,7 @@ from fastapi import FastAPI
 
 from app.api.comparison import router as comparison_router
 from app.api.report import router as report_router
-
+from app.api.agent import router as agent_router
 
 app = FastAPI(
     title="Weekly Report Analysis Agent",
@@ -17,6 +17,7 @@ app = FastAPI(
 
 app.include_router(comparison_router)
 app.include_router(report_router)
+app.include_router(agent_router)
 
 
 @app.get("/")

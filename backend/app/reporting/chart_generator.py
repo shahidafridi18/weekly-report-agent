@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import matplotlib
+matplotlib.use("Agg")  # Must come before importing pyplot
 import matplotlib.pyplot as plt
 
 

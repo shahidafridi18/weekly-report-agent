@@ -10,8 +10,18 @@ def make_json_safe(value):
     can safely be returned as JSON.
     """
 
-    if value is None:
+    if isinstance(value, dict):
+        return {str(key): make_json_safe(item) for key, item in value.items()}
+
+    if isinstance(value, (list, tuple)):
+        return [make_json_safe(item) for item in value]
+
+    if value is None or value is pd.NA or value is pd.NaT:
         return None
+
+    # bool is a subclass of int; preserve JSON true/false before integer conversion.
+    if isinstance(value, (bool, np.bool_)):
+        return bool(value)
 
     if isinstance(value, (float, np.floating)):
         if math.isnan(value) or math.isinf(value):
@@ -21,9 +31,6 @@ def make_json_safe(value):
 
     if isinstance(value, (int, np.integer)):
         return int(value)
-
-    if isinstance(value, (bool, np.bool_)):
-        return bool(value)
 
     if isinstance(value, pd.Timestamp):
         return value.isoformat()

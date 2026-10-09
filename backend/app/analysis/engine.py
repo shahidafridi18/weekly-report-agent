@@ -12,10 +12,14 @@ from app.analysis.variance import calculate_variances
 from app.processing.matcher import categorize_rows, match_rows
 from app.processing.normalizer import classify_columns
 from app.validation.data_validator import validate_columns
-from app.processing.serializer import dataframe_to_records
+from app.processing.serializer import dataframe_to_records, make_json_safe
 from app.analysis.entities import (
     format_new_entities,
     format_removed_entities,
+)
+from app.schema import (
+    COUNTERPARTY_KEY_COLUMNS,
+    COUNTERPARTY_METRIC_COLUMNS,
 )
 
 def run_analysis(
@@ -33,11 +37,34 @@ def run_analysis(
     validation = validate_columns(
         previous_df,
         current_df,
+        key_columns,
     )
 
     if not validation["valid"]:
+        issues = []
+        if validation["missing_columns"] or validation["new_columns"]:
+            issues.append("the weekly schemas do not match")
+        if any(validation["missing_key_columns"].values()):
+            issues.append(
+                "key columns are missing: "
+                f"{validation['missing_key_columns']}"
+            )
+        if any(validation["blank_key_rows"].values()):
+            issues.append(
+                f"blank business keys found: {validation['blank_key_rows']}"
+            )
+        if any(validation["duplicate_key_rows"].values()):
+            issues.append(
+                "duplicate business keys found: "
+                f"{validation['duplicate_key_rows']}"
+            )
+        if any(validation["missing_metric_columns"].values()):
+            issues.append(
+                "required counterparty metrics are missing: "
+                f"{validation['missing_metric_columns']}"
+            )
         raise ValueError(
-            "The weekly datasets do not have matching schemas."
+            "Weekly dataset validation failed: " + "; ".join(issues)
         )
 
     # 2. Identify numerical columns
@@ -46,6 +73,8 @@ def run_analysis(
     numerical_columns = classification[
         "numerical_columns"
     ]
+    if set(COUNTERPARTY_KEY_COLUMNS).issubset(previous_df.columns):
+        numerical_columns = list(COUNTERPARTY_METRIC_COLUMNS)
 
     # 3. Match rows
     merged_df = match_rows(
@@ -121,7 +150,7 @@ def run_analysis(
 
 
 
-    return {
+    return make_json_safe({
         "validation": validation,
 
         "columns": {
@@ -161,4 +190,4 @@ def run_analysis(
 
 "removed_entities": removed_entities,
 
-}
+})

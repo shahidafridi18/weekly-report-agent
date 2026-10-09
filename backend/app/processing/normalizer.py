@@ -1,5 +1,7 @@
 import pandas as pd
 
+from app.schema import NON_METRIC_COLUMNS
+
 
 def classify_columns(df: pd.DataFrame) -> dict:
     """
@@ -9,6 +11,11 @@ def classify_columns(df: pd.DataFrame) -> dict:
     numerical_columns = df.select_dtypes(
         include="number"
     ).columns.tolist()
+    numerical_columns = [
+        column
+        for column in numerical_columns
+        if column not in NON_METRIC_COLUMNS
+    ]
 
     non_numerical_columns = [
         column

@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import matplotlib
+matplotlib.use("Agg")  # Must come before importing pyplot
 import matplotlib.pyplot as plt
 
 
@@ -31,17 +33,16 @@ def generate_kpi_change_chart(
             "No KPI percentage changes available."
         )
 
-    fig, ax = plt.subplots(figsize=(10, 5))
+    figure_height = max(5, len(metrics) * 0.32)
+    fig, ax = plt.subplots(figsize=(10, figure_height))
 
-    bars = ax.bar(
-        metrics,
-        changes,
-    )
-
-    ax.axhline(
-        0,
-        linewidth=1,
-    )
+    bar_colors = [
+        "#378A66" if value >= 0 else "#C45B55"
+        for value in changes
+    ]
+    bars = ax.barh(metrics, changes, color=bar_colors)
+    ax.axvline(0, color="#555555", linewidth=0.8)
+    ax.invert_yaxis()
 
     ax.set_title(
         "Week-over-Week KPI Change",
@@ -49,38 +50,24 @@ def generate_kpi_change_chart(
         fontweight="bold",
     )
 
-    ax.set_ylabel("Change (%)")
-
-    ax.set_xlabel("")
-
-    ax.tick_params(
-        axis="x",
-        rotation=25,
-    )
+    ax.set_xlabel("Change (%)")
+    ax.set_ylabel("")
+    ax.tick_params(axis="y", labelsize=8)
 
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
 
+    largest_change = max(abs(value) for value in changes)
+    label_padding = max(largest_change * 0.02, 0.25)
     for bar, value in zip(bars, changes):
-        y_position = (
-            value + 0.5
-            if value >= 0
-            else value - 0.5
-        )
-
-        vertical_alignment = (
-            "bottom"
-            if value >= 0
-            else "top"
-        )
-
+        positive = value >= 0
         ax.text(
-            bar.get_x() + bar.get_width() / 2,
-            y_position,
+            value + (label_padding if positive else -label_padding),
+            bar.get_y() + bar.get_height() / 2,
             f"{value:+.2f}%",
-            ha="center",
-            va=vertical_alignment,
-            fontsize=9,
+            ha="left" if positive else "right",
+            va="center",
+            fontsize=8,
         )
 
     fig.tight_layout()

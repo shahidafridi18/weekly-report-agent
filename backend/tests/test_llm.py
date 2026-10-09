@@ -13,11 +13,11 @@ SAMPLE_DATA_DIR = BASE_DIR / "sample_data"
 
 
 week1 = read_excel_file(
-    SAMPLE_DATA_DIR / "week1.xlsx"
+    SAMPLE_DATA_DIR / "counterparty_week1_formatted.xlsx"
 )
 
 week2 = read_excel_file(
-    SAMPLE_DATA_DIR / "week2.xlsx"
+    SAMPLE_DATA_DIR / "counterparty_week2_formatted.xlsx"
 )
 
 
@@ -25,8 +25,8 @@ analysis = run_analysis(
     previous_df=week1,
     current_df=week2,
     key_columns=[
-        "Product",
-        "Region",
+        "SIREN",
+        "Unique Identifier",
     ],
 )
 
